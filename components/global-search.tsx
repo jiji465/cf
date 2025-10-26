@@ -22,9 +22,9 @@ type GlobalSearchProps = {
 export function GlobalSearch({
   open,
   onOpenChange,
-  clients,
-  taxes,
-  obligations,
+  clients = [],
+  taxes = [],
+  obligations = [],
   onSelectObligation,
   onSelectClient,
 }: GlobalSearchProps) {
