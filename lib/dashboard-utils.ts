@@ -3,14 +3,14 @@ import { calculateDueDate, isOverdue, isUpcomingThisWeek } from "./date-utils"
 
 // Função agora recebe os dados brutos e os combina
 export const getObligationsWithDetails = (
-  obligations: Obligation[], 
-  clients: Client[], 
-  taxes: Tax[]
+  obligations: Obligation[] | undefined,
+  clients: Client[] | undefined,
+  taxes: Tax[] | undefined
 ): ObligationWithDetails[] => {
-  // Usando 'reduce' para filtrar e mapear em uma única passagem, de forma segura.
+  if (!obligations || !clients || !taxes) return []
+
   return obligations.reduce<ObligationWithDetails[]>((acc, obligation) => {
     const client = clients.find((c) => c.id === obligation.clientId)
-    // Se o cliente não for encontrado, a obrigação é ignorada.
     if (!client) {
       return acc
     }
@@ -32,17 +32,19 @@ export const getObligationsWithDetails = (
 
 // Função agora recebe a lista detalhada e a lista de clientes para calcular as métricas
 export const calculateDashboardStats = (
-  clients: Client[], 
-  obligationsWithDetails: ObligationWithDetails[]
+  clients: Client[] | undefined,
+  obligationsWithDetails: ObligationWithDetails[] | undefined
 ): DashboardStats => {
-  
-  const activeClients = clients.filter((c) => c.status === "active").length
-  const pendingObligations = obligationsWithDetails.filter((o) => o.status === "pending")
+  const safeClients = clients || []
+  const safeObligations = obligationsWithDetails || []
+
+  const activeClients = safeClients.filter((c) => c.status === "active").length
+  const pendingObligations = safeObligations.filter((o) => o.status === "pending")
   const overdueObligations = pendingObligations.filter((o) => isOverdue(o.calculatedDueDate))
   const upcomingThisWeek = pendingObligations.filter((o) => isUpcomingThisWeek(o.calculatedDueDate))
 
   const today = new Date()
-  const completedThisMonth = obligationsWithDetails.filter((o) => {
+  const completedThisMonth = safeObligations.filter((o) => {
     if (!o.completedAt) return false
     const completed = new Date(o.completedAt)
     return (
@@ -53,9 +55,9 @@ export const calculateDashboardStats = (
   }).length
 
   return {
-    totalClients: clients.length,
+    totalClients: safeClients.length,
     activeClients,
-    totalObligations: obligationsWithDetails.length,
+    totalObligations: safeObligations.length,
     pendingObligations: pendingObligations.length,
     completedThisMonth,
     overdueObligations: overdueObligations.length,
