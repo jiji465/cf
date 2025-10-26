@@ -1,0 +1,12 @@
+
+{
+  "crons": [
+    {
+      "path": "/api/recurrence",
+      "schedule": "0 0 * * *",
+      "headers": {
+        "Authorization": "Bearer ${CRON_SECRET}"
+      }
+    }
+  ]
+}

@@ -7,20 +7,27 @@ export const getObligationsWithDetails = (
   clients: Client[], 
   taxes: Tax[]
 ): ObligationWithDetails[] => {
-  return obligations.map((obligation) => {
-    const client = clients.find((c) => c.id === obligation.clientId)!
-    const tax = obligation.taxId ? taxes.find((t) => t.id === obligation.taxId) : undefined
+  // Usando 'reduce' para filtrar e mapear em uma única passagem, de forma segura.
+  return obligations.reduce<ObligationWithDetails[]>((acc, obligation) => {
+    const client = clients.find((c) => c.id === obligation.clientId)
+    // Se o cliente não for encontrado, a obrigação é ignorada.
+    if (!client) {
+      return acc
+    }
 
-    // Usa a função calculateDueDate refatorada (que aceita o objeto Obligation)
+    const tax = obligation.taxId ? taxes.find((t) => t.id === obligation.taxId) : undefined
     const calculatedDueDate = calculateDueDate(obligation).toISOString()
 
-    return {
+    // Adiciona a obrigação detalhada ao acumulador.
+    acc.push({
       ...obligation,
       client,
       tax,
       calculatedDueDate,
-    }
-  })
+    })
+
+    return acc
+  }, [])
 }
 
 // Função agora recebe a lista detalhada e a lista de clientes para calcular as métricas
