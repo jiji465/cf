@@ -31,7 +31,14 @@ type ObligationFormProps = {
   onSave: (obligation: Obligation) => void
 }
 
-export function ObligationForm({ obligation, clients, taxes, open, onOpenChange, onSave }: ObligationFormProps) {
+export function ObligationForm({
+  obligation,
+  clients = [],
+  taxes = [],
+  open,
+  onOpenChange,
+  onSave,
+}: ObligationFormProps) {
   const [formData, setFormData] = useState<Partial<Obligation>>(
     obligation || {
       name: "",
