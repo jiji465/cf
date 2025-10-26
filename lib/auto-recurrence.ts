@@ -33,65 +33,59 @@ function setLastRecurrenceCheck(date: string): void {
 // ==============================================================================
 
 
-export function checkAndGenerateRecurrences(): void {
+// Função refatorada para ser assíncrona e usar 'await'
+export async function checkAndGenerateRecurrences(): Promise<void> {
   const now = new Date()
   const currentPeriod = getCurrentPeriod()
   const lastCheck = getLastRecurrenceCheck()
 
-  // 1. Verifica se já rodou hoje (evita execuções múltiplas)
   const today = now.toISOString().split("T")[0]
   if (lastCheck === today) {
     return
   }
 
-  // 2. A lógica de geração automática deve ocorrer no primeiro dia de cada mês
   if (!shouldGenerateRecurrence(now)) {
     return
   }
 
   console.log("[v0] Iniciando geração automática de recorrências para", currentPeriod)
 
-  // 3. Gerar obrigações recorrentes
-  const obligations = getObligations()
-  // Filtra apenas as obrigações MÃE (que não são geradas por outras)
-  const obligationsToGenerate = obligations.filter(
-    (o) => o.autoGenerate && !o.parentObligationId, 
-  )
+  // Busca os dados do Supabase de forma assíncrona
+  const [obligations, taxes, installments] = await Promise.all([
+    getObligations(),
+    getTaxes(),
+    getInstallments(),
+  ])
 
-  obligationsToGenerate.forEach((obligation) => {
-    // Verifica se já existe uma obrigação gerada para este período
+  // Gerar obrigações
+  const obligationsToGenerate = obligations.filter((o) => o.autoGenerate && !o.parentObligationId)
+  for (const obligation of obligationsToGenerate) {
     const alreadyGenerated = obligations.some(
       (o) => o.parentObligationId === obligation.id && o.generatedFor === currentPeriod,
     )
-
     if (!alreadyGenerated) {
       const newObligation = generateObligationForPeriod(obligation, currentPeriod)
-      saveObligation(newObligation)
+      await saveObligation(newObligation)
       console.log("[v0] Obrigação gerada:", newObligation.name, "para", currentPeriod)
     }
-  })
+  }
 
-  // 4. Gerar impostos recorrentes
-  const taxes = getTaxes()
-  const taxesToGenerate = taxes.filter((t) => t.dueDay !== undefined) 
-
-  taxesToGenerate.forEach((tax) => {
-    const alreadyGenerated = taxes.some((t) => t.name === tax.name && t.createdAt.startsWith(currentPeriod))
-
+  // Gerar impostos
+  const taxesToGenerate = taxes.filter((t) => t.dueDay !== undefined)
+  for (const tax of taxesToGenerate) {
+    const alreadyGenerated = taxes.some((t) => t.name === tax.name && t.createdAt?.startsWith(currentPeriod))
     if (!alreadyGenerated) {
       const newTax = generateTaxForPeriod(tax, currentPeriod)
-      saveTax(newTax)
+      await saveTax(newTax)
       console.log("[v0] Imposto gerado:", newTax.name, "para", currentPeriod)
     }
-  })
+  }
 
-  // 5. Gerar parcelas recorrentes
-  const installments = getInstallments()
+  // Gerar parcelas
   const installmentsToGenerate = installments.filter((i) => i.autoGenerate && i.currentInstallment < i.installmentCount)
-
-  installmentsToGenerate.forEach((installment) => {
+  for (const installment of installmentsToGenerate) {
     const newInstallment = generateInstallmentForPeriod(installment, currentPeriod)
-    saveInstallment(newInstallment)
+    await saveInstallment(newInstallment)
     console.log(
       "[v0] Parcela gerada:",
       newInstallment.name,
@@ -99,20 +93,25 @@ export function checkAndGenerateRecurrences(): void {
       "para",
       currentPeriod,
     )
-  })
+  }
 
-  // 6. Atualiza a data da última verificação (para evitar que rode novamente hoje)
   setLastRecurrenceCheck(today)
   console.log("[v0] Geração automática de recorrências concluída")
 }
 
-// Hook para executar a verificação quando o app carrega
+// Hook atualizado para lidar com a função assíncrona
 export function initializeAutoRecurrence(): void {
   if (typeof window !== "undefined") {
-    // Executa imediatamente
-    checkAndGenerateRecurrences()
+    // Executa a verificação assíncrona imediatamente
+    checkAndGenerateRecurrences().catch((err) =>
+      console.error("[v0] Erro na geração automática inicial:", err),
+    )
 
-    // Configura verificação diária (a cada 24 horas)
-    setInterval(checkAndGenerateRecurrences, 24 * 60 * 60 * 1000)
+    // Configura verificação diária
+    setInterval(() => {
+      checkAndGenerateRecurrences().catch((err) =>
+        console.error("[v0] Erro na geração automática diária:", err),
+      )
+    }, 24 * 60 * 60 * 1000)
   }
 }

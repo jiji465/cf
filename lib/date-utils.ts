@@ -60,31 +60,38 @@ const calculateDueDateFromPrimitives = (
 }
 
 
-// Função pública principal com sobrecarga para aceitar o objeto Obligation
-export const calculateDueDate = (
+// Assinaturas sobrecarregadas para clareza
+export function calculateDueDate(obligation: Obligation, referenceDate?: Date): Date
+export function calculateDueDate(
+  dueDay: number,
+  dueMonth: number | undefined,
+  frequency: string,
+  weekendRule: WeekendRule,
+  referenceDate?: Date,
+): Date
+
+// Implementação da função
+export function calculateDueDate(
   param1: number | Obligation,
-  param2?: number,
+  param2?: number | Date,
   param3?: string,
   param4?: WeekendRule,
   param5?: Date,
-): Date => {
-  if (typeof param1 === 'object' && 'dueDay' in param1) {
-    const obl = param1 as Obligation
-    return calculateDueDateFromPrimitives(
-      obl.dueDay,
-      obl.dueMonth,
-      obl.frequency,
-      obl.weekendRule
-    )
+): Date {
+  if (typeof param1 === "object" && param1 !== null && "dueDay" in param1) {
+    // Lógica para a primeira assinatura (com objeto Obligation)
+    const obl = param1
+    const refDate = param2 instanceof Date ? param2 : undefined
+    return calculateDueDateFromPrimitives(obl.dueDay, obl.dueMonth, obl.frequency, obl.weekendRule, refDate)
   }
 
-  // Fallback para a assinatura original
+  // Lógica para a segunda assinatura (com primitivos)
   return calculateDueDateFromPrimitives(
     param1 as number,
-    param2,
+    param2 as number | undefined,
     param3 as string,
     param4 as WeekendRule,
-    param5
+    param5,
   )
 }
 
