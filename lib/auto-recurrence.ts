@@ -1,5 +1,3 @@
-// jiji465/cf/cf-869bdbfddd735f8515395102173e0456ead0bd24/lib/auto-recurrence.ts
-
 import {
   getObligations,
   getTaxes,
@@ -7,7 +5,7 @@ import {
   saveObligation,
   saveTax,
   saveInstallment,
-} from "./supabase/database" // Importação corrigida
+} from "./supabase/database" 
 import {
   shouldGenerateRecurrence,
   getCurrentPeriod,
@@ -16,7 +14,8 @@ import {
   generateInstallmentForPeriod,
 } from "./recurrence-engine"
 
-// === Local Storage Cache for Daily Check (Performance Only) ===
+// === Cache de Status de Execução Diária (usa localStorage para performance) ===
+// Mantido localmente para não depender de um módulo 'storage' inexistente
 const LAST_RECURRENCE_CHECK_KEY = "lastRecurrenceCheck"
 
 function getLastRecurrenceCheck(): string | null {
@@ -31,7 +30,7 @@ function setLastRecurrenceCheck(date: string): void {
     localStorage.setItem(LAST_RECURRENCE_CHECK_KEY, date)
   }
 }
-// =============================================================
+// ==============================================================================
 
 
 export function checkAndGenerateRecurrences(): void {
@@ -39,23 +38,24 @@ export function checkAndGenerateRecurrences(): void {
   const currentPeriod = getCurrentPeriod()
   const lastCheck = getLastRecurrenceCheck()
 
-  // Verifica se já rodou hoje
+  // 1. Verifica se já rodou hoje (evita execuções múltiplas)
   const today = now.toISOString().split("T")[0]
   if (lastCheck === today) {
     return
   }
 
-  // Verifica se é o primeiro dia do mês
+  // 2. A lógica de geração automática deve ocorrer no primeiro dia de cada mês
   if (!shouldGenerateRecurrence(now)) {
     return
   }
 
   console.log("[v0] Iniciando geração automática de recorrências para", currentPeriod)
 
-  // Gerar obrigações recorrentes
+  // 3. Gerar obrigações recorrentes
   const obligations = getObligations()
+  // Filtra apenas as obrigações MÃE (que não são geradas por outras)
   const obligationsToGenerate = obligations.filter(
-    (o) => o.autoGenerate && !o.parentObligationId, // Apenas obrigações originais
+    (o) => o.autoGenerate && !o.parentObligationId, 
   )
 
   obligationsToGenerate.forEach((obligation) => {
@@ -71,12 +71,11 @@ export function checkAndGenerateRecurrences(): void {
     }
   })
 
-  // Gerar impostos recorrentes
+  // 4. Gerar impostos recorrentes
   const taxes = getTaxes()
-  const taxesToGenerate = taxes.filter((t) => t.dueDay !== undefined)
+  const taxesToGenerate = taxes.filter((t) => t.dueDay !== undefined) 
 
   taxesToGenerate.forEach((tax) => {
-    // Verifica se já existe um imposto gerado para este período
     const alreadyGenerated = taxes.some((t) => t.name === tax.name && t.createdAt.startsWith(currentPeriod))
 
     if (!alreadyGenerated) {
@@ -86,7 +85,7 @@ export function checkAndGenerateRecurrences(): void {
     }
   })
 
-  // Gerar parcelas recorrentes
+  // 5. Gerar parcelas recorrentes
   const installments = getInstallments()
   const installmentsToGenerate = installments.filter((i) => i.autoGenerate && i.currentInstallment < i.installmentCount)
 
@@ -102,7 +101,7 @@ export function checkAndGenerateRecurrences(): void {
     )
   })
 
-  // Atualiza a data da última verificação
+  // 6. Atualiza a data da última verificação (para evitar que rode novamente hoje)
   setLastRecurrenceCheck(today)
   console.log("[v0] Geração automática de recorrências concluída")
 }
