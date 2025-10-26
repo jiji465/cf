@@ -35,7 +35,12 @@ type ObligationListProps = {
   onUpdate: () => void
 }
 
-export function ObligationList({ obligations, clients, taxes, onUpdate }: ObligationListProps) {
+export function ObligationList({
+  obligations = [],
+  clients = [],
+  taxes = [],
+  onUpdate,
+}: ObligationListProps) {
   const [search, setSearch] = useState("")
   const [clientFilter, setClientFilter] = useState<string>("all")
   const [editingObligation, setEditingObligation] = useState<ObligationWithDetails | undefined>()
