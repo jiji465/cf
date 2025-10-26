@@ -9,29 +9,34 @@ import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { getClients, getTaxes, getObligations } from "@/lib/supabase/database"
+import { getObligationsWithDetails } from "@/lib/dashboard-utils"
 import { isOverdue } from "@/lib/date-utils"
 import { CheckCircle2, Clock, PlayCircle, AlertTriangle, Search } from "lucide-react"
-import type { Client, Tax, Obligation } from "@/lib/types"
+import type { Client, Tax, Obligation, ObligationWithDetails } from "@/lib/types"
 
 export default function ObligacoesPage() {
-  const [obligations, setObligations] = useState<Obligation[]>([])
+  const [obligations, setObligations] = useState<ObligationWithDetails[]>([])
   const [clients, setClients] = useState<Client[]>([])
   const [taxes, setTaxes] = useState<Tax[]>([])
   const [activeTab, setActiveTab] = useState("all")
   const [searchOpen, setSearchOpen] = useState(false)
-  const [loading, setLoading] = useState(true)
-
   const updateData = async () => {
-    setLoading(true)
     try {
-      const [obligationsData, clientsData, taxesData] = await Promise.all([getObligations(), getClients(), getTaxes()])
-      setObligations(obligationsData)
-      setClients(clientsData)
-      setTaxes(taxesData)
+      const [obligationsData, clientsData, taxesData] = await Promise.all([
+        getObligations(),
+        getClients(),
+        getTaxes(),
+      ])
+      const detailedObligations = getObligationsWithDetails(obligationsData, clientsData, taxesData)
+      setObligations(detailedObligations)
+      setClients(clientsData || [])
+      setTaxes(taxesData || [])
     } catch (error) {
       console.error("[v0] Error loading data:", error)
-    } finally {
-      setLoading(false)
+      // Set to empty arrays in case of error to prevent crash
+      setObligations([])
+      setClients([])
+      setTaxes([])
     }
   }
 
