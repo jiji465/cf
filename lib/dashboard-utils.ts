@@ -1,68 +1,57 @@
-// jiji465/cf/cf-869bdbfddd735f8515395102173e0456ead0bd24/lib/date-utils.ts
-import type { WeekendRule, Obligation } from "./types" // Importando Obligation
-// ... isWeekend e adjustForWeekend inalteradas
+import type { DashboardStats, ObligationWithDetails, Client, Obligation, Tax } from "./types"
+import { calculateDueDate, isOverdue, isUpcomingThisWeek } from "./date-utils"
 
-// Funções utilitárias renomeadas para uso interno (privado)
-export const calculateDueDateFromPrimitives = (
-  dueDay: number,
-  dueMonth: number | undefined,
-  frequency: string,
-  weekendRule: WeekendRule,
-  referenceDate: Date = new Date(),
-): Date => {
-// ... lógica de cálculo de data
-  let dueDate: Date
+// Função agora recebe os dados brutos e os combina
+export const getObligationsWithDetails = (
+  obligations: Obligation[], 
+  clients: Client[], 
+  taxes: Tax[]
+): ObligationWithDetails[] => {
+  return obligations.map((obligation) => {
+    const client = clients.find((c) => c.id === obligation.clientId)!
+    const tax = obligation.taxId ? taxes.find((t) => t.id === obligation.taxId) : undefined
 
-  if (frequency === "annual" && dueMonth) {
-    // Annual obligation with specific month
-    dueDate = new Date(referenceDate.getFullYear(), dueMonth - 1, dueDay)
-    if (dueDate < referenceDate) {
-      dueDate.setFullYear(dueDate.getFullYear() + 1)
-    }
-  } else if (frequency === "quarterly" && dueMonth) {
-    // Quarterly obligation
-    dueDate = new Date(referenceDate.getFullYear(), dueMonth - 1, dueDay)
-    while (dueDate < referenceDate) {
-      dueDate.setMonth(dueDate.getMonth() + 3)
-    }
-  } else {
-    // Monthly or custom
-    dueDate = new Date(referenceDate.getFullYear(), referenceDate.getMonth(), dueDay)
-    if (dueDate < referenceDate) {
-      dueDate.setMonth(dueDate.getMonth() + 1)
-    }
-  }
+    // Usa a função calculateDueDate refatorada (que aceita o objeto Obligation)
+    const calculatedDueDate = calculateDueDate(obligation).toISOString()
 
-  return adjustForWeekend(dueDate, weekendRule)
+    return {
+      ...obligation,
+      client,
+      tax,
+      calculatedDueDate,
+    }
+  })
 }
 
+// Função agora recebe a lista detalhada e a lista de clientes para calcular as métricas
+export const calculateDashboardStats = (
+  clients: Client[], 
+  obligationsWithDetails: ObligationWithDetails[]
+): DashboardStats => {
+  
+  const activeClients = clients.filter((c) => c.status === "active").length
+  const pendingObligations = obligationsWithDetails.filter((o) => o.status === "pending")
+  const overdueObligations = pendingObligations.filter((o) => isOverdue(o.calculatedDueDate))
+  const upcomingThisWeek = pendingObligations.filter((o) => isUpcomingThisWeek(o.calculatedDueDate))
 
-// Nova função pública com sobrecarga (wrapper) para aceitar objeto Obligation ou argumentos primitivos
-export const calculateDueDate = (
-  param1: number | Obligation,
-  param2?: number,
-  param3?: string,
-  param4?: WeekendRule,
-  param5?: Date,
-): Date => {
-  if (typeof param1 === 'object' && 'dueDay' in param1) {
-    const obl = param1
-    return calculateDueDateFromPrimitives(
-      obl.dueDay,
-      obl.dueMonth,
-      obl.frequency,
-      obl.weekendRule
+  const today = new Date()
+  const completedThisMonth = obligationsWithDetails.filter((o) => {
+    if (!o.completedAt) return false
+    const completed = new Date(o.completedAt)
+    return (
+      completed.getMonth() === today.getMonth() &&
+      completed.getFullYear() === today.getFullYear() &&
+      o.status === "completed"
     )
+  }).length
+
+  return {
+    totalClients: clients.length,
+    activeClients,
+    totalObligations: obligationsWithDetails.length,
+    pendingObligations: pendingObligations.length,
+    completedThisMonth,
+    overdueObligations: overdueObligations.length,
+    upcomingThisWeek: upcomingThisWeek.length,
   }
-
-  // Fallback para a assinatura original
-  return calculateDueDateFromPrimitives(
-    param1 as number,
-    param2,
-    param3 as string,
-    param4 as WeekendRule,
-    param5
-  )
 }
-
-// ... restante do código inalterado
