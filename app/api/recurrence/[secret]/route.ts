@@ -82,10 +82,11 @@ async function generateRecurrences() {
   return { message: `Automatic recurrence generation complete. Generated ${generatedCount} items.` }
 }
 
-export async function POST(req: NextRequest) {
-  const authToken = req.headers.get("authorization")?.replace("Bearer ", "")
-
-  if (authToken !== process.env.CRON_SECRET) {
+export async function POST(
+  req: NextRequest,
+  { params }: { params: { secret: string } }
+) {
+  if (params.secret !== process.env.CRON_SECRET) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   }
 

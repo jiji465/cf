@@ -3,7 +3,6 @@ import type { Metadata } from "next"
 import { Geist, Geist_Mono } from "next/font/google"
 import { Analytics } from "@vercel/analytics/next"
 import { Suspense } from "react"
-import { AutoRecurrenceInitializer } from "@/components/auto-recurrence-initializer"
 import "./globals.css"
 
 const geistSans = Geist({
@@ -30,7 +29,6 @@ export default function RootLayout({
   return (
     <html lang="pt-BR" className={`${geistSans.variable} ${geistMono.variable}`}>
       <body className="font-sans antialiased">
-        <AutoRecurrenceInitializer />
         <Suspense fallback={null}>{children}</Suspense>
         <Analytics />
       </body>
